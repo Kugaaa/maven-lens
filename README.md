@@ -1,31 +1,61 @@
 # Maven Lens
 
-一个 MCP (Model Context Protocol) Server，让 AI 助手能够检索和阅读 Maven 项目依赖中的类信息与源码。
+[中文文档](README_zh.md)
 
-## 功能
+An MCP (Model Context Protocol) Server that enables AI assistants to search and read class information and source code from Maven project dependencies.
 
-- **find_class** — 按类名搜索 Maven 依赖中的类，支持精确匹配和模糊搜索，返回全限定名、所属 artifact、类型（class/interface/enum/annotation/record）
-- **get_class_info** — 获取类的签名概要（类声明、字段、方法签名，不含方法体），token 开销小，适合快速了解 API 结构
-- **get_class_source** — 获取类的完整源码，优先从 sources.jar 提取，无 sources.jar 时自动 CFR 反编译
+## The Problem
 
-## 前置要求
+AI coding assistants working with Maven projects cannot see class definitions or source code from third-party dependencies — they have to guess how to use APIs. Maven Lens gives AI the ability to:
 
-- JDK 17+（MCP SDK 依赖要求）
+- Search for classes in dependencies to find the correct fully qualified name and artifact
+- View class signature summaries (fields, method signatures) to quickly understand API structure
+- View full source code to understand implementation details
+
+## Features
+
+Three MCP Tools, ordered by information granularity from coarse to fine:
+
+| Tool | Purpose | Token Cost |
+|------|---------|-----------|
+| **find_class** | Search by class name, return matching class list | Low |
+| **get_class_info** | Get class signature summary (method bodies removed) | Medium |
+| **get_class_source** | Get full source code | High |
+
+## Prerequisites
+
+- JDK 17+
 - Maven 3.6+
+- Target project dependencies already downloaded to local repository (`~/.m2/repository`)
 
-## 构建
+## Build
 
 ```bash
 mvn clean package -DskipTests
 ```
 
-构建产物为 fat jar：`target/maven-lens-1.0-SNAPSHOT.jar`
+Output is a fat jar: `target/maven-lens-1.0-SNAPSHOT.jar`
 
-## MCP 配置
+## MCP Configuration
+
+### Claude Code
+
+Edit `.mcp.json` in your project directory:
+
+```json
+{
+  "mcpServers": {
+    "maven-lens": {
+      "command": "java",
+      "args": ["-jar", "/absolute/path/to/maven-lens-1.0-SNAPSHOT.jar"]
+    }
+  }
+}
+```
 
 ### Claude Desktop
 
-编辑配置文件：
+Edit the config file:
 
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
@@ -41,24 +71,9 @@ mvn clean package -DskipTests
 }
 ```
 
-### Claude Code
-
-编辑项目目录下的 `.mcp.json`：
-
-```json
-{
-  "mcpServers": {
-    "maven-lens": {
-      "command": "java",
-      "args": ["-jar", "/absolute/path/to/maven-lens-1.0-SNAPSHOT.jar"]
-    }
-  }
-}
-```
-
 ### Cursor
 
-在 Settings > MCP 中添加，或编辑 `~/.cursor/mcp.json`：
+Add in Settings > MCP, or edit `~/.cursor/mcp.json`:
 
 ```json
 {
@@ -71,9 +86,9 @@ mvn clean package -DskipTests
 }
 ```
 
-> 将 `/absolute/path/to/maven-lens-1.0-SNAPSHOT.jar` 替换为实际的 jar 文件绝对路径。
+> Replace `/absolute/path/to/maven-lens-1.0-SNAPSHOT.jar` with the actual absolute path to the jar file.
 
-如果系统默认 JDK 不是 17+，需要指定 JDK 17 的完整路径：
+If your default JDK is not 17+, specify the full path to JDK 17:
 
 ```json
 {
@@ -86,29 +101,23 @@ mvn clean package -DskipTests
 }
 ```
 
-## 工具说明
+## Tool Reference
 
 ### find_class
 
-按类名搜索依赖中的类。
+Search for classes in dependencies by name. Supports three matching modes:
+1. **FQN exact match** — input a fully qualified name to locate directly
+2. **Simple name exact match** — input a class name like `Transactional` to find all classes with that name
+3. **Fuzzy match** — input a partial name, matched by containment
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| pom_path | string | 是 | 项目 pom.xml 的绝对路径 |
-| class_name | string | 是 | 类名，支持精确匹配和模糊搜索 |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| pom_path | string | Yes | Absolute path to the project's pom.xml |
+| class_name | string | Yes | Class name, supports FQN, simple name, or fuzzy search |
 
-**参数示例：**
-
-```json
-{
-  "pom_path": "/home/user/my-project/pom.xml",
-  "class_name": "Transactional"
-}
-```
-
-**返回示例：**
+**Response example:**
 
 ```json
 {
@@ -123,27 +132,24 @@ mvn clean package -DskipTests
 }
 ```
 
+Response fields:
+- `fqn` — Fully qualified class name
+- `artifact` — Maven coordinates (groupId:artifactId:version)
+- `type` — Type: class / interface / enum / annotation / record
+- `has_sources` — Whether a sources.jar is available for original source code
+
 ### get_class_info
 
-获取类的签名概要，方法体替换为 `{ ... }`。
+Get a class signature summary. Method bodies are replaced with `{ ... }`, preserving class declarations, fields, method signatures, and annotations. Ideal for quickly understanding API structure with far fewer tokens than full source.
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| pom_path | string | 是 | 项目 pom.xml 的绝对路径 |
-| fully_qualified_name | string | 是 | 全限定类名 |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| pom_path | string | Yes | Absolute path to the project's pom.xml |
+| fully_qualified_name | string | Yes | Fully qualified class name |
 
-**参数示例：**
-
-```json
-{
-  "pom_path": "/home/user/my-project/pom.xml",
-  "fully_qualified_name": "org.springframework.transaction.annotation.Transactional"
-}
-```
-
-**返回示例：**
+**Response example:**
 
 ```json
 {
@@ -155,42 +161,48 @@ mvn clean package -DskipTests
 
 ### get_class_source
 
-获取完整源码。
+Get full source code, including all method implementations.
 
-**参数：**
+**Parameters:**
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| pom_path | string | 是 | 项目 pom.xml 的绝对路径 |
-| fully_qualified_name | string | 是 | 全限定类名 |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| pom_path | string | Yes | Absolute path to the project's pom.xml |
+| fully_qualified_name | string | Yes | Fully qualified class name |
 
-**参数示例：**
-
-```json
-{
-  "pom_path": "/home/user/my-project/pom.xml",
-  "fully_qualified_name": "com.google.common.collect.ImmutableList"
-}
-```
-
-**返回示例：**
+**Response example:**
 
 ```json
 {
   "source_type": "decompiled",
   "artifact": "com.google.guava:guava:33.0.0-jre",
-  "content": "// 完整源码..."
+  "content": "// full source code..."
 }
 ```
 
-`source_type` 为 `sources-jar` 或 `decompiled`，表示源码来源。
+`source_type` is either `sources-jar` or `decompiled`, indicating the source origin.
 
-## 工作原理
+## How It Works
 
-1. 首次调用任意工具时，自动解析 pom.xml 的依赖树并构建类名索引
-2. 解析结果按 pom.xml 路径缓存，pom.xml 修改后自动重建
-3. 源码获取优先从 sources.jar 提取原始源码，无 sources.jar 时通过 CFR 反编译字节码
-4. 支持多模块 Maven 项目
+### Dependency Resolution
+
+1. On first invocation, resolves the full dependency tree from pom.xml (using Maven Resolver)
+2. Supports multi-module projects — automatically walks up to find the root pom and collects all submodules
+3. Internal modules are read from `target/classes` directory, no need to package into a jar
+4. For transitive dependencies not expanded by Maven Resolver, supplements by parsing local repository pom files
+5. Results are cached by pom.xml path and automatically rebuilt when pom.xml is modified
+
+### Class Index
+
+After resolution, all dependency jars and classes directories are scanned to build a two-level index:
+- Simple name index — for fast exact and fuzzy matching
+- FQN index — for fully qualified name lookups
+
+### Source Retrieval
+
+Priority:
+1. **sources.jar** — extracts original `.java` source from local repository, preserving comments and Javadoc
+2. **CFR decompilation** — when no sources.jar is available, decompiles `.class` bytecode
 
 ## License
 
