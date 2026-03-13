@@ -24,9 +24,9 @@ Three MCP Tools, ordered by information granularity from coarse to fine:
 
 ## Prerequisites
 
-- JDK 17+
-- Maven 3.6+
-- Target project dependencies already downloaded to local repository (`~/.m2/repository`)
+- **JDK 17+** — required to run the MCP Server
+- **Maven 3.6+** — required to build the project
+- Target project dependencies already downloaded to local repository (`~/.m2/repository`). Run `mvn dependency:resolve` in your target project if needed
 
 ## Build
 
@@ -37,6 +37,8 @@ mvn clean package -DskipTests
 Output is a fat jar: `target/maven-lens-1.0-SNAPSHOT.jar`
 
 ## MCP Configuration
+
+Maven Lens runs as a **STDIO-based** MCP Server — the AI client launches the jar as a subprocess and communicates via stdin/stdout.
 
 ### Claude Code
 
