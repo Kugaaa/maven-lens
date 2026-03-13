@@ -34,7 +34,7 @@ Three MCP Tools, ordered by information granularity from coarse to fine:
 mvn clean package -DskipTests
 ```
 
-Output is a fat jar: `target/maven-lens-1.0-SNAPSHOT.jar`
+Output is a fat jar: `target/maven-lens-1.0.0.jar`
 
 ## MCP Configuration
 
@@ -49,7 +49,7 @@ Edit `.mcp.json` in your project directory:
   "mcpServers": {
     "maven-lens": {
       "command": "java",
-      "args": ["-jar", "/absolute/path/to/maven-lens-1.0-SNAPSHOT.jar"]
+      "args": ["-jar", "/absolute/path/to/maven-lens-1.0.0.jar"]
     }
   }
 }
@@ -67,7 +67,7 @@ Edit the config file:
   "mcpServers": {
     "maven-lens": {
       "command": "java",
-      "args": ["-jar", "/absolute/path/to/maven-lens-1.0-SNAPSHOT.jar"]
+      "args": ["-jar", "/absolute/path/to/maven-lens-1.0.0.jar"]
     }
   }
 }
@@ -82,13 +82,13 @@ Add in Settings > MCP, or edit `~/.cursor/mcp.json`:
   "mcpServers": {
     "maven-lens": {
       "command": "java",
-      "args": ["-jar", "/absolute/path/to/maven-lens-1.0-SNAPSHOT.jar"]
+      "args": ["-jar", "/absolute/path/to/maven-lens-1.0.0.jar"]
     }
   }
 }
 ```
 
-> Replace `/absolute/path/to/maven-lens-1.0-SNAPSHOT.jar` with the actual absolute path to the jar file.
+> Replace `/absolute/path/to/maven-lens-1.0.0.jar` with the actual absolute path to the jar file.
 
 If your default JDK is not 17+, specify the full path to JDK 17:
 
@@ -97,7 +97,7 @@ If your default JDK is not 17+, specify the full path to JDK 17:
   "mcpServers": {
     "maven-lens": {
       "command": "/path/to/jdk17/bin/java",
-      "args": ["-jar", "/absolute/path/to/maven-lens-1.0-SNAPSHOT.jar"]
+      "args": ["-jar", "/absolute/path/to/maven-lens-1.0.0.jar"]
     }
   }
 }
