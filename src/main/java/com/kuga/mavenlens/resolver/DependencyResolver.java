@@ -265,8 +265,28 @@ public class DependencyResolver {
             return Collections.emptyList();
         }
 
+        // 从 effective model 的 dependencyManagement 提取 managed dependencies
+        // 用于 maven-resolver 在依赖树仲裁时正确覆盖传递依赖版本（如 BOM import 场景）
+        List<org.eclipse.aether.graph.Dependency> managedDeps = new ArrayList<>();
+        if (model.getDependencyManagement() != null && model.getDependencyManagement().getDependencies() != null) {
+            for (Dependency managed : model.getDependencyManagement().getDependencies()) {
+                String managedVersion = managed.getVersion();
+                if (managedVersion == null || managedVersion.startsWith("$")) {
+                    continue;
+                }
+                if ("import".equals(managed.getScope())) {
+                    continue;
+                }
+                String managedScope = managed.getScope() != null ? managed.getScope() : JavaScopes.COMPILE;
+                Artifact managedArtifact = new DefaultArtifact(
+                        managed.getGroupId(), managed.getArtifactId(), "jar", managedVersion);
+                managedDeps.add(new org.eclipse.aether.graph.Dependency(managedArtifact, managedScope));
+            }
+        }
+
         CollectRequest collectRequest = new CollectRequest();
         collectRequest.setDependencies(aetherDeps);
+        collectRequest.setManagedDependencies(managedDeps);
         collectRequest.setRepositories(remoteRepositories);
 
         List<ResolvedArtifact> result = new ArrayList<>();
